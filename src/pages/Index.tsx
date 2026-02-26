@@ -5,6 +5,7 @@ import { AnomalyChart } from '@/components/AnomalyChart';
 import { ServiceHealthGrid } from '@/components/ServiceHealthGrid';
 import { AlertPanel } from '@/components/AlertPanel';
 import { HealingPanel } from '@/components/HealingPanel';
+import { AlertSettings } from '@/components/AlertSettings';
 import { Shield, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -13,6 +14,7 @@ const Index = () => {
     logs, anomalies, alerts, healingActions, serviceHealth,
     timeSeriesData, stats, acknowledgeAlert, resolveAlert,
     applyHealing, rollbackHealing,
+    alertEmail, setAlertEmail, emailEnabled, setEmailEnabled, minSeverity, setMinSeverity,
   } = useLogStream();
 
   const activeAlerts = alerts.filter(a => a.status === 'active').length;
@@ -36,26 +38,40 @@ const Index = () => {
           </h1>
           <p className="text-xs text-muted-foreground">Real-time Log Anomaly Detection & Self-Healing</p>
         </div>
-        <div className="ml-auto flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-neon-green animate-pulse" />
-          <span className="text-xs text-muted-foreground font-mono">LIVE</span>
+        <div className="ml-auto flex items-center gap-3">
+          <AlertSettings
+            email={alertEmail}
+            onEmailChange={setAlertEmail}
+            emailEnabled={emailEnabled}
+            onToggleEmail={setEmailEnabled}
+            minSeverity={minSeverity}
+            onMinSeverityChange={setMinSeverity}
+          />
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-neon-green animate-pulse" />
+            <span className="text-xs text-muted-foreground font-mono">LIVE</span>
+          </div>
         </div>
       </motion.div>
 
+      {/* Email status banner */}
+      {emailEnabled && alertEmail && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="mb-4 px-4 py-2 rounded-lg bg-primary/10 border border-primary/20 flex items-center gap-2 text-xs"
+        >
+          <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+          <span className="text-primary font-medium">Email alerts active</span>
+          <span className="text-muted-foreground">→ {alertEmail} (min: {minSeverity}+)</span>
+        </motion.div>
+      )}
+
       <div className="space-y-4">
-        {/* Stats */}
         <StatsBar stats={stats} activeAlerts={activeAlerts} servicesDown={servicesDown} />
-
-        {/* Charts */}
         <AnomalyChart data={timeSeriesData} />
-
-        {/* Service Health */}
         <ServiceHealthGrid services={serviceHealth} />
-
-        {/* Log Stream */}
         <LogStream logs={logs} />
-
-        {/* Alerts & Healing */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <AlertPanel alerts={alerts} onAcknowledge={acknowledgeAlert} onResolve={resolveAlert} />
           <HealingPanel actions={healingActions} onApply={applyHealing} onRollback={rollbackHealing} />

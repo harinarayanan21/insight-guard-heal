@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { LogEntry, Anomaly, Alert, HealingAction, ServiceHealth } from '@/types/log-types';
 import { generateLogEntry, generateAnomaly, generateHealingAction, generateServiceHealth, generateTimeSeriesData } from '@/lib/mock-data';
+import { sendAlertEmail } from '@/lib/alert-service';
+import { toast } from 'sonner';
+
+const severityOrder = { low: 0, medium: 1, high: 2, critical: 3 };
 
 export function useLogStream(enabled = true) {
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -12,12 +16,23 @@ export function useLogStream(enabled = true) {
   const [stats, setStats] = useState({ totalLogs: 0, anomaliesDetected: 0, alertsSent: 0, healingsApplied: 0 });
   const anomalyBuffer = useRef<LogEntry[]>([]);
 
+  // Email settings
+  const [alertEmail, setAlertEmail] = useState(() => localStorage.getItem('logsentinel_email') || '');
+  const [emailEnabled, setEmailEnabled] = useState(() => localStorage.getItem('logsentinel_email_enabled') === 'true');
+  const [minSeverity, setMinSeverity] = useState(() => localStorage.getItem('logsentinel_min_severity') || 'high');
+
+  useEffect(() => { localStorage.setItem('logsentinel_email', alertEmail); }, [alertEmail]);
+  useEffect(() => { localStorage.setItem('logsentinel_email_enabled', String(emailEnabled)); }, [emailEnabled]);
+  useEffect(() => { localStorage.setItem('logsentinel_min_severity', minSeverity); }, [minSeverity]);
+
+  const shouldSendEmail = useCallback((severity: string) => {
+    if (!emailEnabled || !alertEmail) return false;
+    return severityOrder[severity as keyof typeof severityOrder] >= severityOrder[minSeverity as keyof typeof severityOrder];
+  }, [emailEnabled, alertEmail, minSeverity]);
+
   const addLog = useCallback(() => {
     const entry = generateLogEntry();
-    setLogs(prev => {
-      const next = [entry, ...prev].slice(0, 200);
-      return next;
-    });
+    setLogs(prev => [entry, ...prev].slice(0, 200));
     setStats(prev => ({ ...prev, totalLogs: prev.totalLogs + 1 }));
 
     if (entry.isAnomaly) {
@@ -28,26 +43,35 @@ export function useLogStream(enabled = true) {
         setStats(prev => ({ ...prev, anomaliesDetected: prev.anomaliesDetected + 1 }));
         anomalyBuffer.current = [];
 
-        // Generate alert
         const alert: Alert = {
           id: `alert_${Date.now()}`,
           anomalyId: anomaly.id,
           status: 'active',
-          email: 'admin@company.com',
+          email: alertEmail || 'not-configured',
           subject: `[${anomaly.severity.toUpperCase()}] Anomaly in ${anomaly.service}: ${anomaly.type}`,
           sentAt: new Date(),
         };
         setAlerts(prev => [alert, ...prev].slice(0, 50));
         setStats(prev => ({ ...prev, alertsSent: prev.alertsSent + 1 }));
 
-        // Generate healing action
+        // Send real email
+        if (shouldSendEmail(anomaly.severity)) {
+          sendAlertEmail(anomaly, alertEmail).then(result => {
+            if (result.success) {
+              toast.success(`Alert email sent to ${alertEmail}`, { duration: 3000 });
+            } else {
+              toast.error(`Email failed: ${result.error}`, { duration: 5000 });
+            }
+          });
+        }
+
         if (anomaly.severity === 'high' || anomaly.severity === 'critical') {
           const healing = generateHealingAction(anomaly.id);
           setHealingActions(prev => [healing, ...prev].slice(0, 30));
         }
       }
     }
-  }, []);
+  }, [alertEmail, shouldSendEmail]);
 
   const acknowledgeAlert = useCallback((alertId: string) => {
     setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, status: 'acknowledged' as const, acknowledgedAt: new Date() } : a));
@@ -96,5 +120,9 @@ export function useLogStream(enabled = true) {
     };
   }, [enabled, addLog]);
 
-  return { logs, anomalies, alerts, healingActions, serviceHealth, timeSeriesData, stats, acknowledgeAlert, resolveAlert, applyHealing, rollbackHealing };
+  return {
+    logs, anomalies, alerts, healingActions, serviceHealth, timeSeriesData, stats,
+    acknowledgeAlert, resolveAlert, applyHealing, rollbackHealing,
+    alertEmail, setAlertEmail, emailEnabled, setEmailEnabled, minSeverity, setMinSeverity,
+  };
 }
