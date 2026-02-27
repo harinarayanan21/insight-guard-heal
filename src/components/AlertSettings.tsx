@@ -1,6 +1,9 @@
 import { useState } from 'react';
-import { Settings, Mail, Save, X } from 'lucide-react';
+import { Settings, Mail, Save, X, Send, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { sendAlertEmail } from '@/lib/alert-service';
+import { Anomaly } from '@/types/log-types';
+import { toast } from 'sonner';
 
 interface AlertSettingsProps {
   email: string;
@@ -14,10 +17,37 @@ interface AlertSettingsProps {
 export function AlertSettings({ email, onEmailChange, emailEnabled, onToggleEmail, minSeverity, onMinSeverityChange }: AlertSettingsProps) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(email);
+  const [sending, setSending] = useState(false);
 
   const handleSave = () => {
     onEmailChange(draft);
     setOpen(false);
+  };
+
+  const handleTestEmail = async () => {
+    const targetEmail = draft || email;
+    if (!targetEmail) {
+      toast.error('Please enter an email address first');
+      return;
+    }
+    setSending(true);
+    const testAnomaly: Anomaly = {
+      id: `test_${Date.now()}`,
+      type: 'spike',
+      severity: 'medium',
+      service: 'test-service',
+      description: 'This is a test alert to verify your email configuration is working correctly.',
+      score: 0.75,
+      detectedAt: new Date(),
+      logIds: [],
+    };
+    const result = await sendAlertEmail(testAnomaly, targetEmail);
+    setSending(false);
+    if (result.success) {
+      toast.success(`Test email sent to ${targetEmail}`);
+    } else {
+      toast.error(`Failed: ${result.error}`);
+    }
   };
 
   return (
@@ -92,13 +122,23 @@ export function AlertSettings({ email, onEmailChange, emailEnabled, onToggleEmai
                   </select>
                 </div>
 
-                <button
-                  onClick={handleSave}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors"
-                >
-                  <Save className="w-4 h-4" />
-                  Save Settings
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSave}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors"
+                  >
+                    <Save className="w-4 h-4" />
+                    Save
+                  </button>
+                  <button
+                    onClick={handleTestEmail}
+                    disabled={sending}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-secondary text-secondary-foreground font-medium text-sm hover:bg-secondary/80 transition-colors disabled:opacity-50"
+                  >
+                    {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    {sending ? 'Sending…' : 'Send Test'}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
