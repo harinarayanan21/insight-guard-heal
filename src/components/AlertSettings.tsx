@@ -98,14 +98,17 @@ export function AlertSettings({ email, onEmailChange, emailEnabled, onToggleEmai
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-foreground block mb-1.5">Recipient Email (Gmail)</label>
+                  <label className="text-sm font-medium text-foreground block mb-1.5">Recipient Email</label>
                   <input
                     type="email"
                     value={draft}
                     onChange={e => setDraft(e.target.value)}
-                    placeholder="your-email@gmail.com"
+                    placeholder="harinarayanan2108@gmail.com"
                     className="w-full px-3 py-2 rounded-md bg-secondary border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    ⚠️ Sandbox mode: only your Resend-verified email (harinarayanan2108@gmail.com) will work until a domain is verified.
+                  </p>
                 </div>
 
                 <div>
