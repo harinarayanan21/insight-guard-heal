@@ -45,9 +45,10 @@ const Dashboard = () => {
       {/* Row 3: Service Health */}
       <ServiceHealthGrid services={serviceHealth} />
 
-      {/* Row 4: AI Recommendations + Recent Incidents */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Row 4: AI Recommendations + Tasks + Recent Incidents */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <AIRecommendations anomalies={anomalies} serviceHealth={serviceHealth} />
+        <TasksWidget />
         <RecentIncidentsTable alerts={alerts} />
       </div>
 
