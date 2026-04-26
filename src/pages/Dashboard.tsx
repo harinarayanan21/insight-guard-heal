@@ -8,6 +8,7 @@ import { SeverityPieChart } from '@/components/SeverityPieChart';
 import { RecentIncidentsTable } from '@/components/RecentIncidentsTable';
 import { AIRecommendations } from '@/components/AIRecommendations';
 import { HealthScoreGauge } from '@/components/HealthScoreGauge';
+import { TasksWidget } from '@/components/TasksWidget';
 import { motion } from 'framer-motion';
 
 const Dashboard = () => {
